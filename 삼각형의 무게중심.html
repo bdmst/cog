@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>삼각형 무게중심 탐구 ⚖️</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&family=Nanum+Gothic:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Nanum Gothic', sans-serif;
+            background-color: #f0fdf4; /* 연한 초록 바탕 */
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* 스크롤 방지 */
+            touch-action: none; /* 모바일 브라우저의 기본 터치 액션(새로고침 등) 방지 */
+        }
+        .title-font {
+            font-family: 'Jua', sans-serif;
+        }
+        #canvas-container {
+            background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+            background-size: 20px 20px;
+            background-color: white;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.05);
+        }
+        /* 애니메이션 효과용 CSS */
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        .pop-anim {
+            animation: pop 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body class="flex flex-col md:flex-row h-screen">
+
+    <!-- 좌측 컨트롤 패널 -->
+    <div class="w-full md:w-[350px] lg:w-[400px] h-[45%] md:h-full bg-white shadow-xl flex flex-col z-10">
+        <div class="p-6 flex-1 overflow-y-auto flex flex-col">
+            <h1 class="text-3xl title-font text-emerald-600 mb-4">📐 무게중심 탐구</h1>
+            
+            <!-- 탭 메뉴 -->
+            <div class="flex border-b border-gray-200 mb-6 flex-shrink-0">
+                <button id="tab1" class="flex-1 pb-2 text-center font-bold text-emerald-600 border-b-2 border-emerald-600 transition-colors text-sm sm:text-base">1. 균형잡기</button>
+                <button id="tab2" class="flex-1 pb-2 text-center font-bold text-gray-400 hover:text-emerald-500 border-b-2 border-transparent transition-colors text-sm sm:text-base">2. 길이의 비</button>
+                <button id="tab3" class="flex-1 pb-2 text-center font-bold text-gray-400 hover:text-emerald-500 border-b-2 border-transparent transition-colors text-sm sm:text-base">3. 넓이의 비</button>
+            </div>
+
+            <!-- 챕터 1 컨텐츠 (균형잡기) -->
+            <div id="chapter1-content" class="flex-1 flex flex-col">
+                <p class="text-gray-600 mb-6 text-sm leading-relaxed">
+                    삼각형 모양의 종이를 뾰족한 핀 위에 세울 수 있을까요?<br>
+                    절대 떨어지지 않는 <b>완벽한 중심점</b>을 직접 찾아보세요!
+                </p>
+
+                <div class="bg-emerald-50 rounded-xl p-4 mb-6 border border-emerald-100">
+                    <button id="testBtn" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 px-6 rounded-2xl shadow-lg transition-transform transform active:scale-95 text-lg flex items-center justify-center gap-2">
+                        <span>🙌 균형 테스트 (손 놓기)</span>
+                    </button>
+
+                    <!-- 상태 메시지 -->
+                    <div id="statusMsg" class="mt-4 p-4 rounded-xl text-center font-bold text-sm hidden">
+                        <!-- JS에서 메시지 주입 -->
+                    </div>
+
+                    <hr class="my-6 border-emerald-200">
+
+                    <!-- 힌트 섹션 -->
+                    <h2 class="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                        <span>💡 중심을 찾는 마법의 힌트</span>
+                    </h2>
+                    <div class="space-y-3">
+                        <label class="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-emerald-100 transition-colors">
+                            <input type="checkbox" id="chkMidpoints" class="w-5 h-5 text-emerald-500 rounded focus:ring-emerald-500">
+                            <span class="text-sm text-gray-700">각 변의 가운데 점(중점) 표시하기</span>
+                        </label>
+                        <label class="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-emerald-100 transition-colors">
+                            <input type="checkbox" id="chkMedians" class="w-5 h-5 text-emerald-500 rounded focus:ring-emerald-500">
+                            <span class="text-sm text-gray-700">꼭짓점과 마주보는 변의 중점 연결</span>
+                        </label>
+                    </div>
+                    <p class="text-xs text-emerald-600/80 mt-4 leading-relaxed">
+                        * 힌트 선들을 켜보면 핀을 놓아야 할 정확한 위치를 발견할 수 있을지도 몰라요!
+                    </p>
+                </div>
+            </div> <!-- End of chapter1-content -->
+
+            <!-- 챕터 2 컨텐츠 (길이의 비) -->
+            <div id="chapter2-content" class="hidden flex-1 flex flex-col">
+                <p class="text-gray-600 mb-4 text-sm leading-relaxed">
+                    꼭짓점을 이리저리 움직여보세요.<br>
+                    무게중심(G)이 중선을 <b>어떤 비율</b>로 나누는지 직접 확인해볼까요?
+                </p>
+
+                <div class="space-y-4">
+                    <!-- A 기준 -->
+                    <div class="bg-blue-50 p-4 rounded-xl border border-blue-100 shadow-sm flex flex-col gap-2">
+                        <div class="flex justify-around items-center text-center">
+                            <div>
+                                <div class="text-xs font-bold text-gray-500 mb-1">선분 A ↔ G</div>
+                                <div id="len-ag" class="text-blue-700 font-black text-2xl">0.0</div>
+                            </div>
+                            <div class="text-gray-400 font-black text-xl">:</div>
+                            <div>
+                                <div class="text-xs font-bold text-gray-500 mb-1">선분 G ↔ 중점</div>
+                                <div id="len-gma" class="text-blue-700 font-black text-2xl">0.0</div>
+                            </div>
+                        </div>
+                        <div class="text-center text-blue-800 font-black bg-white rounded-lg p-2 shadow-inner border border-blue-100">
+                            비율 = <span id="ratio-a" class="text-xl">2</span> : 1
+                        </div>
+                    </div>
+
+                    <!-- B 기준 -->
+                    <div class="bg-indigo-50 p-4 rounded-xl border border-indigo-100 shadow-sm flex flex-col gap-2">
+                        <div class="flex justify-around items-center text-center">
+                            <div>
+                                <div class="text-xs font-bold text-gray-500 mb-1">선분 B ↔ G</div>
+                                <div id="len-bg" class="text-indigo-700 font-black text-2xl">0.0</div>
+                            </div>
+                            <div class="text-gray-400 font-black text-xl">:</div>
+                            <div>
+                                <div class="text-xs font-bold text-gray-500 mb-1">선분 G ↔ 중점</div>
+                                <div id="len-gmb" class="text-indigo-700 font-black text-2xl">0.0</div>
+                            </div>
+                        </div>
+                        <div class="text-center text-indigo-800 font-black bg-white rounded-lg p-2 shadow-inner border border-indigo-100">
+                            비율 = <span id="ratio-b" class="text-xl">2</span> : 1
+                        </div>
+                    </div>
+
+                    <!-- C 기준 -->
+                    <div class="bg-purple-50 p-4 rounded-xl border border-purple-100 shadow-sm flex flex-col gap-2">
+                        <div class="flex justify-around items-center text-center">
+                            <div>
+                                <div class="text-xs font-bold text-gray-500 mb-1">선분 C ↔ G</div>
+                                <div id="len-cg" class="text-purple-700 font-black text-2xl">0.0</div>
+                            </div>
+                            <div class="text-gray-400 font-black text-xl">:</div>
+                            <div>
+                                <div class="text-xs font-bold text-gray-500 mb-1">선분 G ↔ 중점</div>
+                                <div id="len-gmc" class="text-purple-700 font-black text-2xl">0.0</div>
+                            </div>
+                        </div>
+                        <div class="text-center text-purple-800 font-black bg-white rounded-lg p-2 shadow-inner border border-purple-100">
+                            비율 = <span id="ratio-c" class="text-xl">2</span> : 1
+                        </div>
+                    </div>
+                </div>
+            </div> <!-- End of chapter2-content -->
+
+            <!-- 챕터 3 컨텐츠 (넓이의 비) -->
+            <div id="chapter3-content" class="hidden flex-1 flex flex-col">
+                <p class="text-gray-600 mb-4 text-sm leading-relaxed">
+                    삼각형의 넓이는 어떻게 나뉠까요?<br>
+                    단계를 하나씩 넘겨가며 넓이의 비밀을 확인해보세요!
+                </p>
+
+                <div class="flex space-x-2 mb-4 flex-shrink-0">
+                    <button id="btnStep1" class="flex-1 py-2 rounded-lg bg-emerald-500 text-white font-bold text-sm shadow-md transition-colors">1단계</button>
+                    <button id="btnStep2" class="flex-1 py-2 rounded-lg bg-gray-100 text-gray-500 font-bold text-sm hover:bg-gray-200 transition-colors">2단계</button>
+                    <button id="btnStep3" class="flex-1 py-2 rounded-lg bg-gray-100 text-gray-500 font-bold text-sm hover:bg-gray-200 transition-colors">3단계</button>
+                    <button id="btnStep4" class="flex-1 py-2 rounded-lg bg-gray-100 text-gray-500 font-bold text-sm hover:bg-gray-200 transition-colors">4단계</button>
+                </div>
+
+                <div class="bg-amber-50 p-4 rounded-xl border border-amber-100 shadow-sm flex flex-col gap-3">
+                    <h3 id="ch3-title" class="font-bold text-amber-800 text-center">1. 중선이 나누는 두 넓이</h3>
+                    <p id="ch3-desc" class="text-xs sm:text-sm text-gray-700 text-center leading-relaxed">중선은 삼각형을 <b>정확히 반(1:1)</b>으로 나눕니다.<br>(밑변의 길이가 같고 높이가 같기 때문)</p>
+                    
+                    <div id="ch3-stats" class="flex justify-around items-center text-center mt-2 bg-white rounded-lg p-3 shadow-inner border border-amber-100">
+                        <!-- JS에서 주입 -->
+                    </div>
+                </div>
+            </div> <!-- End of chapter3-content -->
+        </div>
+    </div>
+
+    <!-- 우측 캔버스 영역 -->
+    <div id="canvas-container" class="flex-1 relative w-full h-[55%] md:h-full cursor-crosshair">
+        <canvas id="appCanvas" class="absolute top-0 left-0 w-full h-full"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('appCanvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('canvas-container');
+        
+        // UI 요소를 가져옵니다.
+        const testBtn = document.getElementById('testBtn');
+        const statusMsg = document.getElementById('statusMsg');
+        const chkMidpoints = document.getElementById('chkMidpoints');
+        const chkMedians = document.getElementById('chkMedians');
+
+        // 챕터 탭 UI 요소
+        const tab1 = document.getElementById('tab1');
+        const tab2 = document.getElementById('tab2');
+        const tab3 = document.getElementById('tab3');
+        const ch1Content = document.getElementById('chapter1-content');
+        const ch2Content = document.getElementById('chapter2-content');
+        const ch3Content = document.getElementById('chapter3-content');
+
+        // 챕터 3 상태 및 UI 요소
+        let ch3Step = 1;
+        const btnStep1 = document.getElementById('btnStep1');
+        const btnStep2 = document.getElementById('btnStep2');
+        const btnStep3 = document.getElementById('btnStep3');
+        const btnStep4 = document.getElementById('btnStep4');
+        const ch3Title = document.getElementById('ch3-title');
+        const ch3Desc = document.getElementById('ch3-desc');
+        const ch3Stats = document.getElementById('ch3-stats');
+
+        // 상태 변수
+        let currentChapter = 1; // 1: 균형잡기, 2: 길이의 비
+        let width, height;
+        let points = []; // 삼각형 꼭짓점 A, B, C
+        let pivot = { x: 0, y: 0 }; // 뾰족한 핀(받침점)
+        let draggingPoint = null; // 현재 드래그 중인 점
+        
+        // 시뮬레이션 상태: 'idle' (평상시), 'testing' (테스트 중), 'success' (성공), 'fail' (실패/떨어짐)
+        let simState = 'idle'; 
+        let fallY = 0; // 떨어지는 Y 애니메이션
+        let fallAngle = 0; // 떨어지는 회전 애니메이션
+        const SUCCESS_TOLERANCE = 15; // 실제 무게중심과 허용되는 거리 차이(픽셀)
+
+        // 초기화 및 리사이징
+        function resize() {
+            width = container.clientWidth;
+            height = container.clientHeight;
+            canvas.width = width;
+            canvas.height = height;
+
+            // 처음 로드될 때만 점 위치 초기화
+            if (points.length === 0) {
+                const cx = width / 2;
+                const cy = height / 2;
+                // 화면 크기에 비례하여 초기 삼각형을 더 크게 설정
+                const size = Math.min(width, height) * 0.4; 
+                
+                points = [
+                    { x: cx + size * 0.7, y: cy - size, label: 'A' }, // 점 A를 오른쪽으로 이동
+                    { x: cx - size * 1.1, y: cy + size * 0.8, label: 'B' },
+                    { x: cx + size * 1.1, y: cy + size * 0.8, label: 'C' }
+                ];
+                // 핀은 초기 중심 위치 근처에 배치
+                pivot = { x: cx - 40, y: cy + 30 };
+            }
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // -------------------------
+        // 수학 유틸리티 함수
+        // -------------------------
+        function getDistance(p1, p2) {
+            return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
+        }
+
+        // 실제 무게중심(Centroid) 계산 (세 꼭짓점의 평균)
+        function getTrueCentroid() {
+            return {
+                x: (points[0].x + points[1].x + points[2].x) / 3,
+                y: (points[0].y + points[1].y + points[2].y) / 3
+            };
+        }
+
+        // 두 점의 중점 계산
+        function getMidpoint(p1, p2) {
+            return { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+        }
+
+        // --- 새로 추가된 수학/그리기 유틸리티 ---
+        function getTriangleArea(p1, p2, p3) {
+            return Math.abs((p1.x * (p2.y - p3.y) + p2.x * (p3.y - p1.y) + p3.x * (p1.y - p2.y)) / 2);
+        }
+
+        function getTrueCentroidForPts(pts) {
+            return {
+                x: (pts[0].x + pts[1].x + pts[2].x) / 3,
+                y: (pts[0].y + pts[1].y + pts[2].y) / 3
+            };
+        }
+
+        function drawPolygon(pts, fillStyle, strokeStyle, lineWidth = 2) {
+            ctx.beginPath();
+            ctx.moveTo(pts[0].x, pts[0].y);
+            ctx.lineTo(pts[1].x, pts[1].y);
+            ctx.lineTo(pts[2].x, pts[2].y);
+            ctx.closePath();
+            ctx.fillStyle = fillStyle;
+            ctx.fill();
+            ctx.strokeStyle = strokeStyle;
+            ctx.lineWidth = lineWidth;
+            ctx.stroke();
+        }
+
+        const drawTextLabel = (x, y, text, color) => {
+            ctx.save();
+            ctx.font = "900 22px 'Nanum Gothic'"; // 글자 크기를 15px에서 22px로 더 크고 굵게 키웠습니다.
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.85)";
+            ctx.strokeText(text, x, y);
+            ctx.fillStyle = color;
+            ctx.fillText(text, x, y);
+            ctx.restore();
+        };
+
+        // 이등분(길이 같음) 표시 기호를 그리는 함수
+        const drawTickMarks = (p1, p2, count, color = "#475569") => {
+            const mid = getMidpoint(p1, p2);
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
+            const len = getDistance(p1, p2);
+            if (len === 0) return;
+            const nx = -dy / len; // 수직 벡터 x
+            const ny = dx / len;  // 수직 벡터 y
+            const tickLen = 6;    // 빗금 길이
+            const gap = 6;        // 빗금 간격
+            
+            ctx.save();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            const startOffset = - (count - 1) * gap / 2;
+            for(let i = 0; i < count; i++) {
+                const offset = startOffset + i * gap;
+                const ox = mid.x + (dx/len) * offset;
+                const oy = mid.y + (dy/len) * offset;
+                ctx.moveTo(ox - nx * tickLen, oy - ny * tickLen);
+                ctx.lineTo(ox + nx * tickLen, oy + ny * tickLen);
+            }
+            ctx.stroke();
+            ctx.restore();
+        };
+
+        // -------------------------
+        // 탭 및 스텝 전환 로직
+        // -------------------------
+        function switchChapter(chapter) {
+            currentChapter = chapter;
+            const activeClass = "flex-1 pb-2 text-center font-bold text-emerald-600 border-b-2 border-emerald-600 transition-colors text-sm sm:text-base";
+            const inactiveClass = "flex-1 pb-2 text-center font-bold text-gray-400 hover:text-emerald-500 border-b-2 border-transparent transition-colors text-sm sm:text-base";
+            
+            tab1.className = chapter === 1 ? activeClass : inactiveClass;
+            tab2.className = chapter === 2 ? activeClass : inactiveClass;
+            tab3.className = chapter === 3 ? activeClass : inactiveClass;
+
+            ch1Content.classList.toggle('hidden', chapter !== 1);
+            ch2Content.classList.toggle('hidden', chapter !== 2);
+            ch3Content.classList.toggle('hidden', chapter !== 3);
+
+            resetSimulation();
+        }
+        tab1.addEventListener('click', () => switchChapter(1));
+        tab2.addEventListener('click', () => switchChapter(2));
+        tab3.addEventListener('click', () => switchChapter(3));
+
+        function setCh3Step(step) {
+            ch3Step = step;
+            [btnStep1, btnStep2, btnStep3, btnStep4].forEach((btn, idx) => {
+                if (idx + 1 === step) {
+                    btn.className = "flex-1 py-2 rounded-lg bg-emerald-500 text-white font-bold text-sm shadow-md transition-colors";
+                } else {
+                    btn.className = "flex-1 py-2 rounded-lg bg-gray-100 text-gray-500 font-bold text-sm hover:bg-gray-200 transition-colors";
+                }
+            });
+
+            if (step === 1) {
+                ch3Title.innerHTML = "1. 중선이 나누는 두 넓이";
+                ch3Desc.innerHTML = "중선은 삼각형을 <b>정확히 반(1:1)</b>으로 나눕니다.<br>(밑변의 길이가 같고 높이가 같기 때문)";
+            } else if (step === 2) {
+                ch3Title.innerHTML = "2. 무게중심이 나누는 넓이의 비";
+                ch3Desc.innerHTML = "무게중심(G)이 중선을 2:1로 나누므로,<br>꼭짓점과 연결하면 넓이도 <b>2:1</b>로 나뉩니다.";
+            } else if (step === 3) {
+                ch3Title.innerHTML = "3. 여섯 조각의 마법";
+                ch3Desc.innerHTML = "세 중선을 모두 그으면,<br>넓이가 같은 <b>6개의 작은 삼각형</b>이 만들어집니다!";
+            } else {
+                ch3Title.innerHTML = "4. 세 조각의 마법";
+                ch3Desc.innerHTML = "무게중심에서 세 꼭짓점을 연결하면,<br>넓이가 같은 <b>3개의 삼각형</b>으로 나뉩니다!";
+            }
+        }
+        btnStep1.addEventListener('click', () => setCh3Step(1));
+        btnStep2.addEventListener('click', () => setCh3Step(2));
+        btnStep3.addEventListener('click', () => setCh3Step(3));
+        btnStep4.addEventListener('click', () => setCh3Step(4));
+
+        // -------------------------
+        // 인터랙션 (마우스 / 터치)
+        // -------------------------
+        function getPointerPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        }
+
+        function onPointerDown(e) {
+            if(simState !== 'idle') resetSimulation(); // 실패나 성공 상태에서 클릭하면 초기화
+
+            const pos = getPointerPos(e);
+            let minDist = Infinity;
+            let target = null;
+
+            // 핀 확인 (반경 30) - 챕터 1에서만 활성화
+            if (currentChapter === 1 && getDistance(pos, pivot) < 30) {
+                target = pivot;
+                minDist = getDistance(pos, pivot);
+            }
+
+            // 삼각형 꼭짓점 확인 (반경 30)
+            points.forEach(p => {
+                const dist = getDistance(pos, p);
+                if (dist < 30 && dist < minDist) {
+                    target = p;
+                    minDist = dist;
+                }
+            });
+
+            if (target) {
+                draggingPoint = target;
+                e.preventDefault(); // 스크롤 방지
+            }
+        }
+
+        function onPointerMove(e) {
+            if (!draggingPoint) return;
+            const pos = getPointerPos(e);
+            
+            // 캔버스 밖으로 나가지 않도록 제한
+            pos.x = Math.max(10, Math.min(width - 10, pos.x));
+            pos.y = Math.max(10, Math.min(height - 10, pos.y));
+            
+            draggingPoint.x = pos.x;
+            draggingPoint.y = pos.y;
+            e.preventDefault();
+        }
+
+        function onPointerUp() {
+            draggingPoint = null;
+        }
+
+        canvas.addEventListener('mousedown', onPointerDown);
+        canvas.addEventListener('mousemove', onPointerMove);
+        window.addEventListener('mouseup', onPointerUp);
+
+        canvas.addEventListener('touchstart', onPointerDown, {passive: false});
+        canvas.addEventListener('touchmove', onPointerMove, {passive: false});
+        window.addEventListener('touchend', onPointerUp);
+
+        // -------------------------
+        // 시뮬레이션 로직 (균형 테스트)
+        // -------------------------
+        testBtn.addEventListener('click', () => {
+            if (simState === 'fail' || simState === 'success') {
+                resetSimulation();
+                return;
+            }
+
+            testBtn.classList.add('pop-anim');
+            setTimeout(() => testBtn.classList.remove('pop-anim'), 300);
+
+            const centroid = getTrueCentroid();
+            const dist = getDistance(pivot, centroid);
+
+            statusMsg.classList.remove('hidden');
+
+            if (dist <= SUCCESS_TOLERANCE) {
+                simState = 'success';
+                statusMsg.className = "mt-4 p-4 rounded-xl text-center font-bold text-sm bg-emerald-100 text-emerald-700 border border-emerald-300";
+                statusMsg.innerHTML = "🎉 <b>대성공!</b> 삼각형이 완벽하게 균형을 이뤘어요!<br>이 점이 바로 삼각형의 <span class='text-red-600 text-lg'>'무게중심'</span>입니다.";
+                createConfetti();
+            } else {
+                simState = 'fail';
+                fallY = 0;
+                // 무게중심이 핀의 왼쪽에 있으면 왼쪽으로(-), 오른쪽에 있으면 오른쪽(+)으로 기울어짐
+                fallAngle = (centroid.x < pivot.x) ? -0.02 : 0.02; 
+                statusMsg.className = "mt-4 p-4 rounded-xl text-center font-bold text-sm bg-red-50 text-red-600 border border-red-200";
+                statusMsg.innerHTML = "우당탕탕! 💦 핀의 위치가 안맞아서 기울어졌어요.<br>다시 움직여서 중심을 찾아보세요.";
+            }
+        });
+
+        function resetSimulation() {
+            simState = 'idle';
+            fallY = 0;
+            fallAngle = 0;
+            statusMsg.classList.add('hidden');
+        }
+
+        chkMidpoints.addEventListener('change', resetSimulation);
+        chkMedians.addEventListener('change', resetSimulation);
+
+        // -------------------------
+        // 렌더링 루프 (그리기)
+        // -------------------------
+        function draw() {
+            ctx.clearRect(0, 0, width, height);
+
+            // 꼭짓점, 중점, 무게중심 계산
+            const m01 = getMidpoint(points[0], points[1]); // C의 마주보는 변의 중점
+            const m12 = getMidpoint(points[1], points[2]); // A의 마주보는 변의 중점
+            const m20 = getMidpoint(points[2], points[0]); // B의 마주보는 변의 중점
+            const trueCentroid = getTrueCentroid();
+
+            let lenAG = 0, lenGMa = 0, lenBG = 0, lenGMb = 0, lenCG = 0, lenGMc = 0;
+
+            // 챕터 2 UI (길이/비율) 실시간 업데이트
+            if (currentChapter === 2) {
+                // 픽셀 단위를 그대로 보여주면 숫자가 너무 커서 10으로 나누어 간결한 수치로 표현
+                // 화면상에 표시될 때 정확히 2배수가 되도록, 반올림을 먼저 적용한 후 2배를 계산합니다.
+                lenGMa = Math.round(getDistance(trueCentroid, m12)) / 10;
+                lenAG = lenGMa * 2;
+                document.getElementById('len-ag').textContent = lenAG.toFixed(1);
+                document.getElementById('len-gma').textContent = lenGMa.toFixed(1);
+                document.getElementById('ratio-a').textContent = "2";
+
+                lenGMb = Math.round(getDistance(trueCentroid, m20)) / 10;
+                lenBG = lenGMb * 2;
+                document.getElementById('len-bg').textContent = lenBG.toFixed(1);
+                document.getElementById('len-gmb').textContent = lenGMb.toFixed(1);
+                document.getElementById('ratio-b').textContent = "2";
+
+                lenGMc = Math.round(getDistance(trueCentroid, m01)) / 10;
+                lenCG = lenGMc * 2;
+                document.getElementById('len-cg').textContent = lenCG.toFixed(1);
+                document.getElementById('len-gmc').textContent = lenGMc.toFixed(1);
+                document.getElementById('ratio-c').textContent = "2";
+            }
+
+            ctx.save(); // 삼각형 변형(떨어짐)을 위한 저장 상태
+
+            if (currentChapter === 1 && simState === 'fail') {
+                // 실패시 중력 및 회전 적용
+                fallY += 7; // 떨어지는 속도
+                fallAngle += (fallAngle > 0 ? 0.05 : -0.05); // 회전 속도 증가
+                
+                // 핀(pivot)을 기준으로 회전하고 아래로 떨어지게 만듦
+                ctx.translate(pivot.x, pivot.y);
+                ctx.rotate(fallAngle);
+                ctx.translate(-pivot.x, -pivot.y);
+                ctx.translate(0, fallY);
+            }
+
+            // 1. 삼각형 윤곽 그리기 및 챕터별 면 채우기
+            if (currentChapter === 3) {
+                // 챕터 3 전용 넓이(다각형) 렌더링
+                const totalArea = getTriangleArea(points[0], points[1], points[2]);
+                const baseArea = Math.max(0.1, Math.round(totalArea / 600) / 10);
+                
+                if (ch3Step === 1) {
+                    drawPolygon([points[0], points[1], m12], "rgba(59, 130, 246, 0.4)", "#2563eb", 2); // Blue
+                    drawPolygon([points[0], points[2], m12], "rgba(239, 68, 68, 0.4)", "#dc2626", 2);  // Red
+                    
+                    const halfArea = (baseArea * 3).toFixed(1);
+                    const c1 = getTrueCentroidForPts([points[0], points[1], m12]);
+                    const c2 = getTrueCentroidForPts([points[0], points[2], m12]);
+                    drawTextLabel(c1.x, c1.y, halfArea, "#1d4ed8");
+                    drawTextLabel(c2.x, c2.y, halfArea, "#b91c1c");
+                    
+                    if(ch3Stats) ch3Stats.innerHTML = `<div class="font-black text-blue-700">파란색: <br><span class="text-xl">${halfArea}</span></div><div class="font-black text-gray-400 text-xl">=</div><div class="font-black text-red-700">빨간색: <br><span class="text-xl">${halfArea}</span></div>`;
+                    
+                    // 변 BC 이등분 표시 (1개짜리 빗금)
+                    drawTickMarks(points[1], m12, 1, "#1d4ed8");
+                    drawTickMarks(m12, points[2], 1, "#b91c1c");
+
+                } else if (ch3Step === 2) {
+                    // 배경에 회색으로 칠해 비활성 느낌
+                    drawPolygon([points[0], points[2], m12], "rgba(229, 231, 235, 0.4)", "#d1d5db", 2); 
+                    
+                    drawPolygon([points[0], points[1], trueCentroid], "rgba(59, 130, 246, 0.5)", "#2563eb", 3); // A-B-G
+                    drawPolygon([trueCentroid, points[1], m12], "rgba(16, 185, 129, 0.5)", "#059669", 3);       // G-B-m12
+                    
+                    const area1 = (baseArea * 2).toFixed(1);
+                    const area2 = (baseArea * 1).toFixed(1);
+                    const c1 = getTrueCentroidForPts([points[0], points[1], trueCentroid]);
+                    const c2 = getTrueCentroidForPts([trueCentroid, points[1], m12]);
+                    
+                    drawTextLabel(c1.x, c1.y, area1, "#1d4ed8");
+                    drawTextLabel(c2.x, c2.y, area2, "#047857");
+                    
+                    if(ch3Stats) ch3Stats.innerHTML = `<div class="font-black text-blue-700">파란색: <br><span class="text-xl">${area1}</span></div><div class="font-black text-gray-400 text-xl">2 : 1</div><div class="font-black text-emerald-700">초록색: <br><span class="text-xl">${area2}</span></div>`;
+                    
+                    // 변 BC 이등분 표시 (1개짜리 빗금)
+                    drawTickMarks(points[1], m12, 1, "#047857");
+                    drawTickMarks(m12, points[2], 1, "#9ca3af");
+
+                } else if (ch3Step === 3) {
+                    // 수정됨: 6개의 작은 삼각형을 구성하는 점들을 겹치지 않게 정확하게 배정
+                    const ptsArr = [
+                        [points[0], m01, trueCentroid], // A-m01-G
+                        [points[1], m01, trueCentroid], // B-m01-G
+                        [points[1], m12, trueCentroid], // B-m12-G
+                        [points[2], m12, trueCentroid], // C-m12-G
+                        [points[2], m20, trueCentroid], // C-m20-G
+                        [points[0], m20, trueCentroid]  // A-m20-G
+                    ];
+                    const colors = [
+                        "rgba(248, 113, 113, 0.5)", // Red
+                        "rgba(251, 146, 60, 0.5)",  // Orange
+                        "rgba(250, 204, 21, 0.5)",  // Yellow
+                        "rgba(74, 222, 128, 0.5)",  // Green
+                        "rgba(96, 165, 250, 0.5)",  // Blue
+                        "rgba(192, 132, 252, 0.5)"  // Purple
+                    ];
+                    const borderColors = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#3b82f6", "#a855f7"];
+                    
+                    const smallArea = (baseArea * 1).toFixed(1);
+                    ptsArr.forEach((pts, idx) => {
+                        drawPolygon(pts, colors[idx], borderColors[idx], 2);
+                        const c = getTrueCentroidForPts(pts);
+                        drawTextLabel(c.x, c.y, smallArea, "#374151");
+                    });
+                    
+                    if(ch3Stats) ch3Stats.innerHTML = `<div class="font-black text-gray-800 text-base w-full text-center">6개 조각 넓이가 <span class="text-emerald-600 text-xl">${smallArea}</span> 로<br>모두 똑같아요!</div>`;
+                
+                    // 모든 변의 이등분 표시 (1개, 2개, 3개짜리 빗금)
+                    drawTickMarks(points[1], m12, 1, "#475569");
+                    drawTickMarks(m12, points[2], 1, "#475569");
+                    
+                    drawTickMarks(points[2], m20, 2, "#475569");
+                    drawTickMarks(m20, points[0], 2, "#475569");
+                    
+                    drawTickMarks(points[0], m01, 3, "#475569");
+                    drawTickMarks(m01, points[1], 3, "#475569");
+                } else if (ch3Step === 4) {
+                    const ptsArr = [
+                        [points[0], points[1], trueCentroid], // A-B-G
+                        [points[1], points[2], trueCentroid], // B-C-G
+                        [points[2], points[0], trueCentroid]  // C-A-G
+                    ];
+                    const colors = [
+                        "rgba(59, 130, 246, 0.5)",  // Blue
+                        "rgba(239, 68, 68, 0.5)",   // Red
+                        "rgba(16, 185, 129, 0.5)"   // Green
+                    ];
+                    const borderColors = ["#3b82f6", "#ef4444", "#10b981"];
+                    
+                    const midArea = (baseArea * 2).toFixed(1);
+                    ptsArr.forEach((pts, idx) => {
+                        drawPolygon(pts, colors[idx], borderColors[idx], 2);
+                        const c = getTrueCentroidForPts(pts);
+                        drawTextLabel(c.x, c.y, midArea, "#374151");
+                    });
+                    
+                    if(ch3Stats) ch3Stats.innerHTML = `<div class="font-black text-gray-800 text-base w-full text-center">3개 조각 넓이가 <span class="text-blue-600 text-xl">${midArea}</span> 로<br>모두 똑같아요!</div>`;
+                }
+                
+                // 전체 외곽선 한 번 더 그려서 마감
+                ctx.beginPath();
+                ctx.moveTo(points[0].x, points[0].y);
+                ctx.lineTo(points[1].x, points[1].y);
+                ctx.lineTo(points[2].x, points[2].y);
+                ctx.closePath();
+                ctx.strokeStyle = "#475569";
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+            } else {
+                // 기존 챕터 1, 2 삼각형 그리기
+                ctx.beginPath();
+                ctx.moveTo(points[0].x, points[0].y);
+                ctx.lineTo(points[1].x, points[1].y);
+                ctx.lineTo(points[2].x, points[2].y);
+                ctx.closePath();
+                
+                if (currentChapter === 1 && simState === 'success') {
+                    ctx.fillStyle = "rgba(253, 224, 71, 0.7)"; // 노란색 강조
+                    ctx.strokeStyle = "#ca8a04";
+                    ctx.lineWidth = 4;
+                } else {
+                    ctx.fillStyle = currentChapter === 2 ? "rgba(238, 242, 255, 0.6)" : "rgba(255, 250, 230, 0.6)"; 
+                    ctx.strokeStyle = currentChapter === 2 ? "#818cf8" : "#fbbf24";
+                    ctx.lineWidth = 3;
+                }
+                ctx.fill();
+                ctx.stroke();
+            }
+
+            // 힌트 및 부가 요소 렌더링
+            if (currentChapter !== 3) {
+                // 2. 힌트: 중선 그리기 (체크 시 또는 챕터 2에서는 무조건 표시)
+                if (currentChapter === 2 || chkMedians.checked) {
+                    ctx.beginPath();
+                    ctx.strokeStyle = currentChapter === 2 ? "rgba(99, 102, 241, 0.6)" : "rgba(16, 185, 129, 0.6)"; 
+                    ctx.lineWidth = currentChapter === 2 ? 3 : 2;
+                    if (currentChapter === 1) ctx.setLineDash([5, 5]); // 챕터1만 점선
+
+                    ctx.moveTo(points[0].x, points[0].y); ctx.lineTo(m12.x, m12.y);
+                    ctx.moveTo(points[1].x, points[1].y); ctx.lineTo(m20.x, m20.y);
+                    ctx.moveTo(points[2].x, points[2].y); ctx.lineTo(m01.x, m01.y);
+                    ctx.stroke();
+                    ctx.setLineDash([]); // 점선 해제
+                }
+
+                // 3. 힌트: 중점 표시 (체크 시 또는 챕터 2에서는 무조건 표시)
+                if (currentChapter === 2 || chkMidpoints.checked || chkMedians.checked) {
+                    // 이등분 기호 표시
+                    drawTickMarks(points[1], m12, 1, "#94a3b8");
+                    drawTickMarks(m12, points[2], 1, "#94a3b8");
+                    
+                    drawTickMarks(points[2], m20, 2, "#94a3b8");
+                    drawTickMarks(m20, points[0], 2, "#94a3b8");
+                    
+                    drawTickMarks(points[0], m01, 3, "#94a3b8");
+                    drawTickMarks(m01, points[1], 3, "#94a3b8");
+
+                    ctx.fillStyle = currentChapter === 2 ? "#4f46e5" : "#10b981";
+                    [m01, m12, m20].forEach(m => {
+                        ctx.beginPath();
+                        ctx.arc(m.x, m.y, 6, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.strokeStyle = "white";
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                    });
+                }
+
+                // 챕터 2 전용: 무게중심 G 강조 마크 표시
+                if (currentChapter === 2) {
+                    ctx.beginPath();
+                    ctx.arc(trueCentroid.x, trueCentroid.y, 8, 0, Math.PI * 2);
+                    ctx.fillStyle = "#ef4444"; // 빨간색 중심
+                    ctx.fill();
+                    ctx.strokeStyle = "white";
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    ctx.fillStyle = "#ef4444";
+                    ctx.font = "900 20px 'Nanum Gothic'";
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    ctx.fillText('G', trueCentroid.x + 20, trueCentroid.y - 18);
+
+                    // --- 선분 길이 캔버스에 직접 표시 ---
+                    const drawLabel = (p1, p2, text, color) => {
+                        const midX = (p1.x + p2.x) / 2;
+                        const midY = (p1.y + p2.y) / 2;
+                        drawTextLabel(midX, midY, text, color);
+                    };
+
+                    drawLabel(points[0], trueCentroid, lenAG.toFixed(1), "#1d4ed8"); // A-G (파랑)
+                    drawLabel(trueCentroid, m12, lenGMa.toFixed(1), "#1d4ed8");      // G-Ma
+                    
+                    drawLabel(points[1], trueCentroid, lenBG.toFixed(1), "#4338ca"); // B-G (남색)
+                    drawLabel(trueCentroid, m20, lenGMb.toFixed(1), "#4338ca");      // G-Mb
+                    
+                    drawLabel(points[2], trueCentroid, lenCG.toFixed(1), "#7e22ce"); // C-G (보라)
+                    drawLabel(trueCentroid, m01, lenGMc.toFixed(1), "#7e22ce");      // G-Mc
+                }
+            } else {
+                // 챕터 3 전용 부가 요소 표시 (무게중심 G)
+                if (ch3Step >= 2) {
+                    ctx.beginPath();
+                    ctx.arc(trueCentroid.x, trueCentroid.y, 8, 0, Math.PI * 2);
+                    ctx.fillStyle = "#ef4444";
+                    ctx.fill();
+                    ctx.strokeStyle = "white";
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    ctx.fillStyle = "#ef4444";
+                    ctx.font = "900 20px 'Nanum Gothic'";
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    ctx.fillText('G', trueCentroid.x + 20, trueCentroid.y - 18);
+                }
+            }
+
+            // 4. 삼각형 꼭짓점(손잡이) 그리기
+            points.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 16, 0, Math.PI * 2);
+                ctx.fillStyle = (draggingPoint === p) ? "#2563eb" : "#3b82f6"; // 호버/드래그시 색상 변화
+                ctx.fill();
+                ctx.strokeStyle = "white";
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+                // 알파벳 라벨
+                ctx.fillStyle = "white";
+                ctx.font = "bold 16px 'Nanum Gothic'";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(p.label, p.x, p.y + 1);
+            });
+
+            ctx.restore(); // 삼각형 변형 끝. 
+
+            // 챕터 1에서만 핀을 그리고 파티클 효과를 보여줌
+            if (currentChapter === 1) {
+                // 5. 핀(받침점) 그리기 (항상 제자리에 존재)
+                ctx.beginPath();
+                ctx.arc(pivot.x, pivot.y, 12, 0, Math.PI * 2);
+                ctx.fillStyle = (draggingPoint === pivot) ? "#f87171" : "#ef4444";
+                ctx.fill();
+                ctx.strokeStyle = "white";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // 핀 머리 하이라이트
+                ctx.beginPath();
+                ctx.arc(pivot.x - 3, pivot.y - 3, 3, 0, Math.PI * 2);
+                ctx.fillStyle = "rgba(255,255,255,0.5)";
+                ctx.fill();
+
+                // 성공 시 후광
+                if (simState === 'success') {
+                    ctx.beginPath();
+                    ctx.arc(pivot.x, pivot.y, 22, 0, Math.PI * 2);
+                    ctx.strokeStyle = "rgba(239, 68, 68, 0.6)"; // 빨간색 후광
+                    ctx.lineWidth = 4;
+                    ctx.stroke();
+                }
+            }
+
+            // 폭죽 파티클 그리기
+            drawConfetti();
+
+            requestAnimationFrame(draw);
+        }
+
+        // -------------------------
+        // 성공 시 폭죽 애니메이션 효과
+        // -------------------------
+        let confettis = [];
+        function createConfetti() {
+            confettis = [];
+            const colors = ['#f43f5e', '#3b82f6', '#10b981', '#fbbf24', '#a855f7'];
+            for (let i = 0; i < 50; i++) {
+                confettis.push({
+                    x: pivot.x,
+                    y: pivot.y,
+                    vx: (Math.random() - 0.5) * 15,
+                    vy: (Math.random() - 1) * 15,
+                    size: Math.random() * 8 + 4,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    life: 1.0 // 투명도
+                });
+            }
+        }
+
+        function drawConfetti() {
+            for (let i = confettis.length - 1; i >= 0; i--) {
+                const p = confettis[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.5; // 중력
+                p.life -= 0.02;
+
+                if (p.life <= 0) {
+                    confettis.splice(i, 1);
+                    continue;
+                }
+
+                ctx.globalAlpha = Math.max(0, p.life);
+                ctx.fillStyle = p.color;
+                ctx.fillRect(p.x, p.y, p.size, p.size);
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        // 애니메이션 루프 시작
+        requestAnimationFrame(draw);
+
+    </script>
+</body>
+</html>
